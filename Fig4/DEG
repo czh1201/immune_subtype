@@ -1,0 +1,440 @@
+
+
+
+setwd("D:\\Rwork\\third\\Fig4")
+rm(list=ls())
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(summarytools)
+library(edgeR)
+library(limma)
+
+
+
+
+
+exp <- read.table("HTSeq - Counts.merge.txt",header = T,sep = '\t')
+
+setwd("D:\\Originaldata\\GRCH\\Homo_sapiens.GRCh38.90")
+
+load("gtf_df.Rda")
+
+test <- gtf_df[1:5,]
+
+View(test)
+
+
+
+require("rtracklayer")
+
+
+
+# =======================================================
+
+dim(exp )
+index <- duplicated(exp$Tags)
+exp <- exp[!index,]
+dim(exp)
+
+
+
+fix(exp)
+
+
+
+setwd("D:\\Rwork\\third\\Fig5")
+expr_df_nopoint <- exp%>% 
+  tidyr::separate(Tags,into = c("gene_id","drop"),sep="\\.") %>% 
+  dplyr::select(-drop)
+
+
+
+
+
+
+
+
+
+tail(expr_df_nopoint$gene_id,10)
+expr_df_nopoint <- expr_df_nopoint[1:(length(expr_df_nopoint$gene_id)-5),]
+save(expr_df_nopoint,file = "expr_df_nopoint.Rda")
+
+
+
+
+
+
+
+
+
+mRNA_exprSet <- gtf_df %>% 
+  dplyr::filter(type=="gene",gene_biotype=="protein_coding") %>% 
+  dplyr::select(c(gene_name,gene_id,gene_biotype)) %>% 
+  dplyr::inner_join(expr_df_nopoint,by ="gene_id") %>% 
+  tidyr::unite(gene_id,gene_name,gene_id,gene_biotype,sep = " | ")
+
+
+
+
+
+save(mRNA_exprSet,file = "mRNA_exprSet.Rda")
+
+
+
+mRNA_exprSet <- mRNA_exprSet %>%
+  tidyr::separate(gene_id, c("gene_name","gene_id","gene_biotype"), 
+                  sep = " \\| ")
+
+mRNA_exprSet <- mRNA_exprSet[,-(2:3)]
+fix(mRNA_exprSet)
+
+
+
+
+
+colnames(mRNA_exprSet)
+dim(mRNA_exprSet)
+
+
+
+index <- duplicated(mRNA_exprSet$gene_name)
+mRNA_exprSet <- mRNA_exprSet[!index,]
+dim(mRNA_exprSet)
+
+
+
+
+
+row.names(mRNA_exprSet) <- mRNA_exprSet$gene_name
+mRNA_exprSet$gene_name <- NULL
+
+
+
+
+
+
+
+
+
+
+
+
+
+metadata <- data.frame(colnames(mRNA_exprSet))
+for (i in 1:length(metadata[,1])) {
+  
+  chr <- as.character(substring(metadata[i,1],17,19))
+  
+  if (chr == "Rep") {metadata[i,2] <- "Rep"}
+  
+  if (chr != "Rep") {metadata[i,2] <- "Pri"}
+  
+}
+names(metadata) <- c("id","group")
+metadata
+metadata$group <- as.factor(metadata$group)
+metadata <- subset(metadata,metadata$group == "Pri")
+metadata
+mRNA_exprSet1 <- mRNA_exprSet[,which(colnames(mRNA_exprSet) %in% metadata$id)]
+
+
+
+
+
+
+
+metadata <- data.frame(colnames(mRNA_exprSet1))
+for (i in 1:length(metadata[,1])) {
+  
+  num <- as.numeric(substring(metadata[i,1],14,15))
+  
+  if (num %in% seq(0,1)) {metadata[i,2] <- "T"}
+  
+  if (num %in% seq(10,29)) {metadata[i,2] <- "N/R"}
+  
+}
+names(metadata) <- c("id","group")
+metadata$group <- as.factor(metadata$group)
+metadata <- subset(metadata,metadata$group == "T")
+metadata
+
+
+
+
+
+mRNA_exprSet2 <- mRNA_exprSet1[,which(colnames(mRNA_exprSet1) %in% metadata$id)]
+colnames(mRNA_exprSet2) <- substr(colnames(mRNA_exprSet2),start = 1,stop = 12)
+
+
+
+
+
+mRNA <- mRNA_exprSet2
+
+
+
+
+group <- read.csv("dt.csv",header= T,row.names = 1)
+group <- subset(group,select = c(Barcode,imtype))
+group <- subset(group,group$imtype == 'luminalType3'| group$imtype == 'basalType1')
+group$Barcode <- chartr(old='-',new = '.',x=group$Barcode)
+
+
+mRNA1 <- mRNA[,which(colnames(mRNA) %in% group$Barcode)]
+mRNA2 <- mRNA1[,order(names(mRNA1))]   
+
+
+
+
+group <- group[which(group$Barcode %in% colnames(mRNA2)),]
+write.csv(group,file="group1.csv")
+
+
+metadata <- data.frame(colnames(mRNA2))
+write.csv(metadata,file="metadata.csv")
+
+
+# ================================================================
+#   
+#   
+#   
+#   
+#   
+#   
+# ================================================================
+
+
+exprSet <- mRNA2[rowSums(cpm(mRNA2) > 1) >= 2,]
+
+
+
+
+metadata <- read.csv("metadata.csv",header = T)
+group_list = factor(metadata$imtype,levels=c('luminalType3','basalType1'))
+
+
+
+design <- model.matrix(~group_list)
+exprSet <- DGEList(counts = exprSet, group = group_list)
+exprSet <- calcNormFactors(exprSet)
+
+
+exprSet <- estimateCommonDisp(exprSet)
+exprSet <- estimateTagwiseDisp(exprSet)
+et <- exactTest(exprSet,pair = c('luminalType3','basalType1'))
+ordered_tags <- topTags(et,n=100000)
+
+allDiff <- ordered_tags$table
+allDiff <- allDiff[is.na(allDiff$FDR)==FALSE,]
+diff <- allDiff
+newData <- exprSet$pseudo.counts
+
+
+foldChange=1
+padj=0.05
+diffSig <- diff[(diff$FDR < padj & (diff$logFC > foldChange | diff$logFC < (-foldChange))),]
+write.csv(diffSig,file="diffSig.csv")
+diffUp <- diff[(diff$FDR < padj & (diff$logFC > foldChange)),]
+write.csv(diffUp,file="up.csv")
+diffDown <- diff[(diff$FDR < padj & (diff$logFC < (-foldChange))),]
+write.csv(diffDown,file="down.csv")
+write.csv(diff,file="edgerOut.csv")
+
+
+normalizeExp <- rbind(id=colnames(newData),newData)
+diffExp <- rbind(id=colnames(newData),newData[rownames(diffSig),])
+diffExp <- rbind(id=colnames(newData),newData[rownames(diffSig),])
+write.table(diffExp,file="diffmRNAExp.txt",sep="\t",quote=F,col.names=F)
+min(diffExp)
+max(diffExp)
+
+
+
+
+
+
+
+# ================================================================
+#   
+#   
+#   
+#   
+#   
+#   
+# ================================================================
+
+
+
+
+library(ggplot2)
+diff <- read.csv("edgerOut.csv",header = T)
+logFC <-diff$logFC
+padj <- diff$FDR
+data <- data.frame(logFC=logFC,padj=padj)
+data$sig[(data$padj > 0.05|data$padj=="NA")|(data$logFC < 1)& data$logFC > -1] <- "no"
+data$sig[data$padj <= 0.05 & data$logFC >= 1] <- "up"
+data$sig[data$padj <= 0.05 & data$logFC <= -1] <- "down"
+# 选最大值作为xlim的上下边界
+x_lim <- max(logFC,-logFC)
+# 绘制火山图
+library(ggplot2)
+library(RColorBrewer)
+pdf(file = "mRNA_volcano.pdf",width=8,height=8)
+theme_set(theme_bw())
+p <- ggplot(data,aes(logFC,-1*log10(padj), color = sig))+geom_point()+
+xlim(-5,5) +labs(x="log2(FoldChange)",y="-log10(FDR)")
+
+
+p <- p + scale_color_manual(values =c("#0072B5","grey","#BC3C28"))+
+  geom_hline(yintercept=-log10(0.05),linetype=3)+
+  geom_vline(xintercept=c(-1,1),linetype=3)
+
+
+p <- p +theme(panel.grid =element_blank())+theme(axis.line = element_line(size=0))+ylim(0,15)
+p <- p  +guides(colour = FALSE)
+p <- p +theme(axis.text=element_text(size=20),axis.title=element_text(size=20))
+p
+dev.off()
+
+
+setwd("D:\\Rwork\\third\\Fig5\\DMG")
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("topGO")
+# biocLite("pathview")
+
+rm(list=ls())
+library(DOSE)
+library(org.Hs.eg.db)
+library(topGO)
+library(clusterProfiler)
+library(pathview)
+
+
+
+
+
+
+symbol <- read.csv("DMG_data.csv",header = T,row.names = 1)
+symbol <- subset(symbol, results.pval < 0.05)
+
+
+symbol <- rownames(symbol)
+
+
+
+
+
+gene = bitr(symbol,
+            fromType="SYMBOL", 
+            toType="ENTREZID", 
+            OrgDb="org.Hs.eg.db")
+head(gene)
+
+
+
+
+
+ekk <- enrichKEGG(gene         = gene$ENTREZID,
+                  organism     = 'hsa',
+                  pvalueCutoff = 0.05)
+
+
+
+
+keggtable <- setReadable(ekk,
+                         OrgDb = org.Hs.eg.db,
+                         keytype ="ENTREZID")
+write.csv(as.data.frame(keggtable),file = "KEGG-enrich.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
+ego_CC <- enrichGO(gene          = gene$ENTREZID,
+                   OrgDb         = org.Hs.eg.db,
+                   ont           = "CC",
+                   pAdjustMethod = "BH",
+                   pvalueCutoff  = 0.05)
+write.csv(as.data.frame(ego_CC),"G-enrich_CC.csv",row.names =F)
+
+
+
+
+
+ego_BP <- enrichGO(gene         = gene$ENTREZID,
+                   OrgDb         = org.Hs.eg.db,
+                   ont           = "BP",
+                   pAdjustMethod = "BH",
+                   pvalueCutoff  = 0.05)
+write.csv(as.data.frame(ego_BP),"G-enrich_BP.csv",row.names =F)
+
+
+
+
+
+
+
+
+ego_MF <- enrichGO(gene         = gene$ENTREZID,
+                   OrgDb         = org.Hs.eg.db,
+                   ont           = "MF",
+                   pAdjustMethod = "BH",
+                   pvalueCutoff  = 0.05)
+write.csv(as.data.frame(ego_MF),"G-enrich_MF.csv",row.names =F)
+
+
+
+rm(list=ls())
+
+library(ggplot2)
+library(ggrepel)
+library(dplyr)
+library(tidyr)
+rt=read.csv("data.csv",header=T)
+rt$log10pvalue  <- -log10(rt$pvalue)
+
+head(rt)
+
+
+
+
+rt <- rt %>%
+  tidyr::separate(GeneRatio,c('Gene','Ratio'), sep='\\\\')
+
+rt$Gene <- as.numeric(as.character(rt$Gene))
+rt$Ratio<- as.numeric(as.character(rt$Ratio))
+rt$GeneRatio  <- rt$Gene/ rt$Ratio
+
+
+rt$Count <- rt$Gene
+
+pdf('Bubble_plot.pdf', width=6,height = 6)
+theme_set(theme_bw())  # pre-set the bw theme.
+g <- ggplot(rt) +
+  geom_point(aes(log10pvalue, Count,size=GeneRatio,color=Category))+
+  scale_color_manual(values=c("#4EBBD5",'#F39B7F','#DEB887','#90EE90'))+
+  geom_label_repel(aes(log10pvalue, Count, fill=Category,
+                       label=rt$ID),
+                   fontface="bold", 
+                   box.padding=unit(0.5, "lines"),
+                   point.padding=unit(0.5, "lines"), 
+                   size = 1.5,
+                   segment.color = "#cccccc", 
+                   segment.size = 0.1,
+                   force = 1, max.iter = 3e3,
+                   segment.colour = "grey50")+
+  scale_fill_manual(values=c("#4EBBD5",'#F39B7F','#DEB887','#90EE90'))+xlab("-log10(P.Value)")
+
+g
+
+dev.off()
+
