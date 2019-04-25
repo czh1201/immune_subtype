@@ -1,0 +1,83 @@
+
+
+# In[*]
+
+
+import numpy
+correlations = sig_gene.corr(method='spearman')  
+names = ['DSP', 'CDKN2A', 'ERBB2','tmb','Tcell']
+
+
+fig = plt.figure(figsize=(4, 4))
+ax = sns.heatmap(correlations,
+                 annot=False,
+                 center= 0,
+                 linewidths=.5,
+                 cmap="RdBu") #绘制热图
+
+
+
+#设置坐标字体方向
+#label_y = ax.get_yticklabels()
+#plt.setp(label_y, rotation=45, horizontalalignment='right')
+#label_x = ax.get_xticklabels()
+#plt.setp(label_x, rotation=45, horizontalalignment='right')
+#plt.xlabel('x.num')#设置坐标名称
+#plt.ylabel('')
+#plt.title('CorrelationHeatmap')#标题
+plt.show()
+fig.savefig("CorrelationHeatmap.pdf") 
+# In[*]
+
+
+
+#import numpy as np
+#import pandas as pd
+#from scipy.stats import pearsonr
+
+
+#coeffmat = np.zeros((sig_gene.shape[1], sig_gene.shape[1]))
+#pvalmat = np.zeros((sig_gene.shape[1], sig_gene.shape[1]))
+#
+#for i in range(sig_gene.shape[1]):    
+#    for j in range(sig_gene.shape[1]):        
+#        corrtest = pearsonr(sig_gene[sig_gene.columns[i]], sig_gene[sig_gene.columns[j]])  
+#
+#        coeffmat[i,j] = corrtest[0]
+#        pvalmat[i,j] = corrtest[1]
+#
+#dfcoeff = pd.DataFrame(coeffmat, columns=sig_gene.columns, index=sig_gene.columns)
+#print(dfcoeff)
+
+
+
+
+
+
+
+# In[*]
+
+
+
+import numpy as np
+import pandas as pd
+from scipy.stats import spearmanr
+
+
+
+coeffmat = np.zeros((sig_gene.shape[1], sig_gene.shape[1]))
+pvalmat = np.zeros((sig_gene.shape[1], sig_gene.shape[1]))
+
+for i in range(sig_gene.shape[1]):    
+    for j in range(sig_gene.shape[1]):        
+        corrtest = spearmanr(sig_gene[sig_gene.columns[i]],sig_gene[sig_gene.columns[j]])  
+
+        coeffmat[i,j] = corrtest[0]
+        pvalmat[i,j] = corrtest[1]
+
+dfcoeff = pd.DataFrame(coeffmat, columns=sig_gene.columns, index=sig_gene.columns)
+print(dfcoeff)
+# In[*]
+
+dfpvals = pd.DataFrame(pvalmat, columns=sig_gene.columns, index=sig_gene.columns)
+print(dfpvals)
