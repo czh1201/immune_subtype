@@ -1,4 +1,4 @@
-setwd("D:\\Rwork\\new\\Fig1heatmap")
+setwd("D:\\Rwork\\new\\heatmap")
 
 basal_luminal <- read.csv("data.csv",
                         header = T,
