@@ -1,0 +1,184 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Dec  7 14:49:44 2018
+
+@author: czh
+"""
+
+
+%reset -f
+%clear
+# In[*]
+from matplotlib import pyplot as plt
+import numpy as np
+import pandas as pd
+import lifelines as ll
+from IPython.display import HTML
+%matplotlib inline
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.plotly as py
+import plotly.tools as tls   
+from plotly.graph_objs import *
+import os
+from scipy import stats
+from lifelines.estimation import KaplanMeierFitter
+kmf = KaplanMeierFitter()
+from lifelines.statistics import logrank_test
+os.chdir("D:\\Rwork\\third\\Fig3")
+# In[*]
+
+dt = pd.read_csv("data.csv",header=0,index_col=0)
+
+data = data.dropna(axis=0,how='any')
+
+
+# In[*]
+
+basal= data[data['Subtype'] == 'basal']['Tcell']
+luminal = data[data['Subtype'] == 'luminal']['Tcell']
+
+
+
+stats.kruskal(basal,luminal)
+
+
+
+# In[*]
+
+
+
+
+
+StageII = data[data['stage'] == 'Stage II']['Tcell']
+StageIII  = data[data['stage'] == 'Stage III']['Tcell']
+StageIV = data[data['stage'] == 'Stage IV']['Tcell']
+stats.kruskal( StageII,StageIII,StageIV)
+
+
+
+
+
+# In[*]
+
+
+
+
+
+
+
+
+male = data[data['gender'] == 'MALE']['Tcell']
+female = data[data['gender'] == 'FEMALE']['Tcell']
+stats.kruskal(female,male)
+# In[*]
+
+
+
+
+
+
+
+
+
+
+
+# In[*]
+
+
+HighGrade = data[data['grade'] == 'High Grade']['Tcell']
+LowGrade   = data[data['grade'] == 'Low Grade']['Tcell']
+stats.kruskal(HighGrade,LowGrade )
+
+
+
+
+# In[*]
+
+
+data.treatment_outcome[data["treatment_outcome"] == 'Complete Remission/Response'] = 'PR'
+data.treatment_outcome[data["treatment_outcome"] == 'Partial Remission/Response'] = 'PR'
+data.treatment_outcome[data["treatment_outcome"] == 'Stable Disease'] = 'SD'
+data.treatment_outcome[data["treatment_outcome"] == 'Progressive Disease'] = 'SD'
+
+
+
+# In[*]
+
+PR = data[data["treatment_outcome"] == 'PR' ]['Tcell']
+
+SD = data[data["treatment_outcome"] == 'SD' ]['Tcell']
+
+
+
+
+
+stats.kruskal(PR ,SD)
+
+# In[*]
+
+
+data.age = np.where(data.age > 60,'high','low')
+
+
+high = data[data['age']  =='high']['Tcell']
+low = data[data['age'] =='low']['Tcell']
+
+stats.kruskal(high,low)
+
+
+
+
+data.type[data["gender"] == 'FEMALE'] = 'FE'
+data.type[data["gender"] == 'MALE'] = 'MA'
+data_gender = data
+
+
+
+
+data.type[data["grade"] == 'High Grade'] = 'HighG'
+data.type[data["grade"] == 'Low Grade'] = 'LowG'
+data_grade = data
+
+
+
+# In[*]
+
+frames = [data_subtype,data_stage,data_gender, data_grade, data_outcome,data_age]
+result = pd.concat(frames)
+
+
+# In[*]
+
+result.type.value_counts()
+# In[*]
+current_palette = sns.color_palette()
+
+fig = plt.figure(figsize=(4,4)) 
+sns.set_style("whitegrid")
+plt.title('Tcell-clinical',fontsize=15,fontweight='bold')
+ax = sns.boxplot(x='type',y='Tcell',
+                 data=result,color='white',
+                 width =0.2,fliersize=0,
+                order=['luminal','basal','older','younger','MA','FE','II','III','IV',
+                           'HighG','LowG','CR','PR','SD','PD'])
+
+ax2 = sns.stripplot(x='type',y='Tcell',
+                    data=result,
+                    order=['luminal','basal','older','younger','MA','FE','II','III','IV',
+                           'HighG','LowG','CR','PR','SD','PD'],palette =current_palette,
+                          size=1,
+                    jitter=True)
+plt.yticks(my_y_ticks)   
+
+plt.ylim(-0.05,0.451)
+ax.set_ylabel('CD8+ Tcells',fontsize=15,fontweight='bold')
+ax.set_xlabel('Group',fontsize=15,fontweight='bold')
+ax.tick_params(axis='x',labelsize=4)
+ax.tick_params(axis='y',labelsize=6)
+plt.grid()
+plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+plt.text(0.25,0.35,'')
+fig.savefig("TIL(clinical).pdf") 
+
+# In[*]
