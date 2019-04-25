@@ -1,0 +1,150 @@
+setwd("D:\\Rwork\\new\\Fig1heatmap")
+
+basal_luminal <- read.csv("data.csv",
+                        header = T,
+                         row.names = 1)
+                         
+                         
+basal_luminal <- t(basal_luminal)
+basal_luminal <- basal_luminal[-1,]
+
+
+basal =(log2(basal+0.01))
+luminal = (log2(luminal+0.01))
+immune <- (log2(immune +0.01))
+
+
+annotation_col <- read.csv("anno.csv",
+                           header = T,row.names = 1)
+                           
+                           
+library(dplyr)
+
+
+annotation_col <- annotation_col %>%
+                  dplyr::select(Age,Gender,Outcome,	Recurrence,
+                   Stage,Status,Subtype,)
+                   
+annotation_col <- data.frame(annotation_col)
+
+annotation_col$Subtype <- as.factor(annotation_col$Subtype)
+annotation_col$Stage  <- as.factor(annotation_col$Stage)
+annotation_col$Status <- as.factor(annotation_col$Status)
+annotation_col$Age  <- as.integer(annotation_col$Age)
+annotation_col$Gender <- as.factor(annotation_col$Gender)
+annotation_col$Status <- ifelse(annotation_col$Status == 0,
+"Alive","Dead")
+
+
+annotation_col$Status <- as.factor(annotation_col$Status)
+annotation_col$Recurrence <- ifelse(annotation_col$Recurrence == 0,
+"Recurrencet","NonRecurrent")
+annotation_col$Recurrence <- as.factor(annotation_col$Recurrence)
+annotation_col$Age  <-  ifelse(annotation_col$Age %in% (76:90), 4,
+ifelse(annotation_col$Age %in% (69:75),3,
+ifelse(annotation_col$Age %in% (60:69),2,1)))
+annotation_col$Age  <- as.factor(annotation_col$Age)
+
+
+#===========================================================
+#===========================================================
+
+
+library(RColorBrewer)
+set1 <- c(brewer.pal(12,"Paired"),brewer.pal(8,"Dark2"))
+set2 <- c(brewer.pal(9,"Spectral"))
+# Specify colors
+Subtype = c("#BC3C28", "#0072B5")
+names(Subtype) = c("1", "2")
+Recurrence = brewer.pal(9, "Set1")[5:6]
+names(Recurrence) = c("NonRecurrent", "Recurrencet")
+Stage = c("deepskyblue4","cyan","coral","firebrick4","gray7")
+names(Stage) = c("Stage I","Stage II",
+"Stage III","Stage IV","Not Available")
+Outcome = c("Navy","DeepSkyBlue","gray","DarkSalmon","DarkRed")
+names(Outcome) = c("CR","PR", 'Not Available',
+"SD","PD")
+Status = c("#008B45","#631779")
+names(Status) = c("Alive","Dead")
+Gender = brewer.pal(5,"Dark2")[3:4]
+names(Gender) = c("MALE","FEMALE")
+Age = set2[1:4]
+names(Age) = c("4","3","2","1")
+ann_colors = list(Subtype = Subtype,
+Age = Age,
+Gender = Gender,
+Stage = Stage,
+Recurrence =Recurrence,
+Outcome = Outcome,
+Status = Status)
+library(pheatmap)
+# bk = unique(c(seq(-3,5, length=50)))
+pdf("basal.pdf",width = 18,height = 18)
+par(oma=c(2,2,1,2),mar=c(5,4,4,2))
+p1 = pheatmap(basal, scale = 'row',
+cluster_cols = FALSE,
+# breaks = bk,
+cluster_row = T,
+border_color  = NA,
+annotation_colors = ann_colors,
+show_colnames     = FALSE,
+show_rownames     = FALSE,
+color = colorRampPalette(c("#20B6E2",
+"#020303",
+"#F5EB17"))(50),
+legend = FALSE,
+annotation_col = annotation_col,
+annotation_legend = T,treeheight_row=0,
+treeheight_col=0,
+fontsize = 16,
+fontsize_row=6,
+fontsize_col = 6)
+dev.off()
+
+
+
+
+pdf("luminal.pdf",width = 8,height = 8)
+par(oma=c(2,2,1,2),mar=c(5,4,4,2))
+library(pheatmap)
+pheatmap(luminal, cluster_cols = FALSE,
+scale = "row",
+cluster_row = T,
+border_color  = NA,
+# breaks = bk,
+show_colnames     = FALSE,
+show_rownames     = FALSE,
+color = colorRampPalette(c("#20B6E2",
+"#020303",
+"#F5EB17"))(50),
+legend = FALSE,
+treeheight_row=0,
+treeheight_col=0,
+fontsize = 6.5,
+fontsize_row=6,
+fontsize_col = 6)
+dev.off()
+
+
+
+
+pdf("immune.pdf",width = 8,height = 8)
+par(oma=c(2,2,1,2),mar=c(5,4,4,2))
+library(pheatmap)
+pheatmap(immune, cluster_cols = FALSE,
+scale = "row",
+cluster_row = T,
+border_color  = NA,
+# breaks = bk,
+show_colnames     = FALSE,
+show_rownames     = FALSE,
+color = colorRampPalette(c("#20B6E2",
+"#020303",
+"#F5EB17"))(50),
+legend = FALSE,
+treeheight_row=0,
+treeheight_col=0,
+fontsize = 6.5,
+fontsize_row=6,
+fontsize_col = 6)
+graphics.off()
