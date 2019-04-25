@@ -1,0 +1,336 @@
+rm(list=ls())
+setwd("D:\\Rwork\\third\\Fig5")
+library(maftools)
+library(maftools)
+library(survival)
+library(RTCGA.clinical)
+library(ggplot2)
+require(maftools)
+library(TCGAbiolinks)
+options(stringsAsFactors = F)
+
+project='BLCA'
+
+
+clinical = read.csv('dt.csv', sep = ',', header = T,row.names = 1) 
+clinical$subtype <- clinical$imtype
+clinical$Tumor_Sample_Barcode <- clinical$Barcode
+clinical <- subset(clinical,select=c(Tumor_Sample_Barcode,subtype))
+# clinical <- subset(clinical,clinical$subtype == 'luminalType3' |clinical$subtype == 'basalType1'   )
+table(clinical$subtype)
+
+
+
+
+maf = read.maf('blca.maf', clinical = clinical, isTCGA = T)
+
+
+getSampleSummary(maf)
+getFields(maf)
+getClinicalData(maf)
+
+
+
+col = c('#FF8C00','#EE2200','#008B45','#FF1493',
+        '#631779','#E1871C','#FFFF00','#D2B48C')
+#col = RColorBrewer::brewer.pal(n = 8,name = 'Spectral')
+names(col) = c('Frame_Shift_Del','Missense_Mutation', 'Nonsense_Mutation', 'Multi_Hit', 
+               'Frame_Shift_Ins','In_Frame_Ins','Splice_Site', 'In_Frame_Del')
+
+
+
+
+
+tsb_sub1 <- subset(clinical,clinical$subtype == 'basalType1')
+tsb_sub1 <- as.character(tsb_sub1$Tumor_Sample_Barcode)
+
+
+
+tsb_sub2 <- subset(clinical,clinical$subtype == 'luminalType3')
+tsb_sub2 <- as.character(tsb_sub2$Tumor_Sample_Barcode)
+
+
+
+
+
+tsb_sub3 <- subset(clinical,clinical$subtype == 'basalType2')
+tsb_sub3 <- as.character(tsb_sub3$Tumor_Sample_Barcode)
+
+
+
+
+
+
+
+tsb_sub4 <- subset(clinical,clinical$subtype == 'basalType3')
+tsb_sub4 <- as.character(tsb_sub4$Tumor_Sample_Barcode)
+
+
+
+
+
+tsb_sub5 <- subset(clinical,clinical$subtype == 'luminalType1')
+tsb_sub5 <- as.character(tsb_sub5$Tumor_Sample_Barcode)
+
+
+
+
+
+
+tsb_sub6 <- subset(clinical,clinical$subtype == 'luminalType2')
+tsb_sub6 <- as.character(tsb_sub6$Tumor_Sample_Barcode)
+
+
+
+
+
+
+maf_cancer_sub1 <- subsetMaf(maf, tsb = tsb_sub1, restrictTo = "all", mafObj = TRUE)
+maf_cancer_sub2 <- subsetMaf(maf, tsb = tsb_sub2, restrictTo = "all", mafObj = TRUE)
+
+maf_cancer_sub3 <- subsetMaf(maf, tsb = tsb_sub3, restrictTo = "all", mafObj = TRUE)
+maf_cancer_sub4 <- subsetMaf(maf, tsb = tsb_sub4, restrictTo = "all", mafObj = TRUE)
+
+
+maf_cancer_sub5 <- subsetMaf(maf, tsb = tsb_sub5, restrictTo = "all", mafObj = TRUE)
+maf_cancer_sub6 <- subsetMaf(maf, tsb = tsb_sub6, restrictTo = "all", mafObj = TRUE)
+
+
+
+
+
+
+pdf(paste0('maf_cancer_sub1',project,'.pdf'),width = 8,height = 8)
+oncoplot(maf = maf_cancer_sub1, top = 10, fontSize = 12, colors= col,bgCol = "#4EBBD5")
+dev.off()
+
+
+
+
+
+pdf(paste0('maf_cancer_sub2',project,'.pdf'),width = 8,height = 8)
+oncoplot(maf = maf_cancer_sub2, top = 10, fontSize = 12, colors= col,bgCol = "#4EBBD5")
+dev.off()
+
+
+
+
+
+pdf(paste0('maf_cancer_sub3',project,'.pdf'),width = 8,height = 8)
+oncoplot(maf = maf_cancer_sub3, top = 10, fontSize = 12, colors= col,bgCol = "#4EBBD5")
+dev.off()
+
+
+
+
+
+pdf(paste0('maf_cancer_sub4',project,'.pdf'),width = 8,height = 8)
+oncoplot(maf = maf_cancer_sub4, top = 10, fontSize = 12, colors= col,bgCol = "#4EBBD5")
+dev.off()
+
+
+
+pdf(paste0('maf_cancer_sub5',project,'.pdf'),width = 8,height = 8)
+oncoplot(maf = maf_cancer_sub5, top = 10, fontSize = 12, colors= col,bgCol = "#4EBBD5")
+dev.off()
+
+
+
+
+
+pdf(paste0('maf_cancer_sub6',project,'.pdf'),width = 8,height = 8)
+oncoplot(maf = maf_cancer_sub6, top = 10, fontSize = 12, colors= col,bgCol = "#4EBBD5")
+dev.off()
+
+
+
+
+pt.vs.rt <- mafCompare(m1 = maf_cancer_sub1, m2 = maf_cancer_sub2,
+                       m1Name = 'basalType1', m2Name = 'luminalType3', minMut = 5)
+data <- as.data.frame(pt.vs.rt)
+write.csv(data,file='DMG_data.csv',row.names = F)
+
+
+
+
+
+
+
+
+pdf(paste0('Forset_DMG',project,'.pdf'),width = 8,height = 8)
+forestPlot(mafCompareRes = pt.vs.rt, pVal = 0.05, color = c('royalblue', 'maroon'), geneFontSize = 0.8)
+dev.off()
+
+
+
+
+
+pdf(paste0('DMG_',project,'.pdf'),width = 8,height = 8)
+genes <- as.character(pt.vs.rt$results$Hugo_Symbol[1:10])
+coOncoplot(m1 = maf_cancer_sub1, m2 = maf_cancer_sub2, m1Name = 'basalType1', 
+           colors= col,
+           m2Name = 'luminalType3', genes = genes, removeNonMutated = FALSE,bgCol = "#4EBBD5")
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("topGO")
+# biocLite("pathview")
+
+rm(list=ls())
+library(DOSE)
+library(org.Hs.eg.db)
+library(topGO)
+library(clusterProfiler)
+library(pathview)
+
+
+
+
+
+
+symbol <- read.csv("DMG_data.csv",header = T,row.names = 1)
+symbol <- subset(symbol, results.pval < 0.05)
+
+
+symbol <- rownames(symbol)
+
+
+
+
+
+gene = bitr(symbol,
+            fromType="SYMBOL", 
+            toType="ENTREZID", 
+            OrgDb="org.Hs.eg.db")
+head(gene)
+
+
+
+
+
+ekk <- enrichKEGG(gene         = gene$ENTREZID,
+                  organism     = 'hsa',
+                  pvalueCutoff = 0.05)
+
+
+
+
+keggtable <- setReadable(ekk,
+                         OrgDb = org.Hs.eg.db,
+                         keytype ="ENTREZID")
+write.csv(as.data.frame(keggtable),file = "KEGG-enrich.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
+ego_CC <- enrichGO(gene          = gene$ENTREZID,
+                   OrgDb         = org.Hs.eg.db,
+                   ont           = "CC",
+                   pAdjustMethod = "BH",
+                   pvalueCutoff  = 0.05)
+write.csv(as.data.frame(ego_CC),"G-enrich_CC.csv",row.names =F)
+
+
+
+
+
+ego_BP <- enrichGO(gene         = gene$ENTREZID,
+                   OrgDb         = org.Hs.eg.db,
+                   ont           = "BP",
+                   pAdjustMethod = "BH",
+                   pvalueCutoff  = 0.05)
+write.csv(as.data.frame(ego_BP),"G-enrich_BP.csv",row.names =F)
+
+
+
+
+
+
+ego_MF <- enrichGO(gene         = gene$ENTREZID,
+                   OrgDb         = org.Hs.eg.db,
+                   ont           = "MF",
+                   pAdjustMethod = "BH",
+                   pvalueCutoff  = 0.05)
+write.csv(as.data.frame(ego_MF),"G-enrich_MF.csv",row.names =F)
+
+
+
+
+
+
+rm(list=ls())
+
+library(ggplot2)
+library(ggrepel)
+library(dplyr)
+library(tidyr)
+rt=read.csv("data.csv",header=T)
+rt$log10pvalue  <- -log10(rt$pvalue)
+
+head(rt)
+
+
+
+
+rt <- rt %>%
+  tidyr::separate(GeneRatio,c('Gene','Ratio'), sep='\\\\')
+
+rt$Gene <- as.numeric(as.character(rt$Gene))
+rt$Ratio<- as.numeric(as.character(rt$Ratio))
+rt$GeneRatio  <- rt$Gene/ rt$Ratio
+
+
+rt$Count <- rt$Gene
+
+pdf('Bubble_plot.pdf', width=6,height = 6)
+theme_set(theme_bw())  # pre-set the bw theme.
+g <- ggplot(rt) +
+  geom_point(aes(log10pvalue, Count,size=GeneRatio,color=Category))+
+  scale_color_manual(values=c("#4EBBD5",'#F39B7F','#DEB887','#90EE90'))+
+  geom_label_repel(aes(log10pvalue, Count, fill=Category,
+                       label=rt$ID),
+                   fontface="bold", 
+                   box.padding=unit(0.5, "lines"),
+                   point.padding=unit(0.5, "lines"), 
+                   size = 1.5,
+                   segment.color = "#cccccc", 
+                   segment.size = 0.1,
+                   force = 1, max.iter = 3e3,
+                   segment.colour = "grey50")+
+  scale_fill_manual(values=c("#4EBBD5",'#F39B7F','#DEB887','#90EE90'))+xlab("-log10(P.Value)")
+
+g
+
+dev.off()
